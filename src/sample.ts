@@ -1,15 +1,15 @@
 // could imagine these modules prefixed with `@azure/arm` instead of `./`
-import { concat, uniquestring } from "./string";
+import { concat, uniquestring } from "./platform/string";
 import {
   defineInputParameter,
   defineOutputParameter,
   defineLocationParameter,
   $resourceGroup,
-} from "./parameters";
+} from "./platform/parameters";
 
 import { defineStorageAccount, defineAccountTypeParameter } from "./storage";
 import { emit } from "./emit";
-import { defineResource } from "./resources";
+import { defineResource } from "./platform/resources";
 
 // identifiers prefixed with $ are Values. Values represent variables in the ARM template.
 

@@ -23,9 +23,16 @@ interface TypeMap {
   array: Array<any>;
 }
 
-export function defineInputParameter<
-  T extends "string" | "number" | "boolean" | "object" | "array"
->(
+type ParameterTypes = "string" | "number" | "boolean" | "object" | "array";
+
+/**
+ * Define a template parameter
+ *
+ * @param name The name of the parameter
+ * @param type The type of the parameter
+ * @param options Additional options
+ */
+export function defineInputParameter<T extends ParameterTypes>(
   name: string,
   type: T,
   options: DefineInputParameterOptions = {}

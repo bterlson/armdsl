@@ -36,6 +36,7 @@ function listKeysCall(ref: Value<string>) {
   return memberExpr;
 }
 
+// todo : remove intersection
 export function defineStorageAccount(
   name: string | Value<string>,
   location: string | Value<string>,
@@ -117,6 +118,11 @@ export function defineStorageAccount(
   } as any;
 }
 
+/**
+ * Define an input parameter that prompts for a storage account type.
+ *
+ * @param name The name of this parameter
+ */
 export function defineAccountTypeParameter(name: string) {
   return defineInputParameter(name, "string", {
     defaultValue: "Standard_LRS",
