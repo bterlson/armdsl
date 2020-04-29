@@ -1,11 +1,11 @@
-import { parameters, outputs } from "./state";
+import { parameters, outputs } from "../state";
 import {
   Value,
   InputParameterNode,
   BoxValue,
   CallExpressionNode,
   MemberExpressionNode,
-} from "./types";
+} from "../types";
 
 type DefineInputParameterOptions = {
   defaultValue?: Value<string> | Value<number> | string | number;
@@ -15,11 +15,21 @@ type DefineInputParameterOptions = {
   };
 };
 
-export function defineInputParameter(
+interface TypeMap {
+  string: string;
+  number: number;
+  boolean: boolean;
+  object: object;
+  array: Array<any>;
+}
+
+export function defineInputParameter<
+  T extends "string" | "number" | "boolean" | "object" | "array"
+>(
   name: string,
-  type: "string" | "number",
+  type: T,
   options: DefineInputParameterOptions = {}
-): Value<any> {
+): Value<TypeMap[T]> {
   const parameter: InputParameterNode = {
     type: "inputParameter",
     parameter: {
@@ -51,7 +61,8 @@ export function defineInputParameter(
 
   parameters.push(parameter);
 
-  return value;
+  // TODO: fix me
+  return value as any;
 }
 
 export function defineOutputParameter<T>(name: string, value: Value<T>) {
@@ -63,7 +74,8 @@ export function defineOutputParameter<T>(name: string, value: Value<T>) {
 }
 
 interface ResourceGroup {
-  id: Value<string>;
+  id: string;
+  location: string;
 }
 
 const resourceGroupCall: CallExpressionNode = {
@@ -78,6 +90,12 @@ const resourceGroupId: MemberExpressionNode = {
   rhs: "id",
 };
 
+const resourceGroupLocation: MemberExpressionNode = {
+  type: "memberExpr",
+  lhs: resourceGroupCall,
+  rhs: "location",
+};
+
 export const $resourceGroup: Value<ResourceGroup> = {
   type: "value",
   ref: resourceGroupCall,
@@ -86,6 +104,11 @@ export const $resourceGroup: Value<ResourceGroup> = {
     type: "value",
     valueType: "future",
     ref: resourceGroupId,
+  },
+  location: {
+    type: "value",
+    valueType: "future",
+    ref: resourceGroupLocation,
   },
 };
 

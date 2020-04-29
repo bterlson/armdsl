@@ -1,15 +1,17 @@
 type KnownProps<T> = T extends object
   ? {
-      [k in keyof T]: T[k];
+      [k in keyof T]: Value<T[k]>;
     }
   : {};
 
-export type Value<T> = {
+interface BaseValueType<T> {
   type: "value";
   value?: T;
   ref?: Nodes;
   valueType: "future" | "static";
-} & KnownProps<T>;
+}
+
+export type Value<T> = BaseValueType<T> & KnownProps<T>;
 
 export function isValue(v: unknown): v is Value<any> {
   if (typeof v !== "object") return false;
@@ -19,6 +21,11 @@ export function isValue(v: unknown): v is Value<any> {
   }
   return false;
 }
+
+export type PrimitiveTypes = string | number | boolean;
+export type ComplexTypes = object | any[];
+export type test = any[] extends {} ? true : false;
+export type AllTypes = ComplexTypes | PrimitiveTypes;
 
 export function BoxValue(v: string | Value<string>): Value<string>;
 export function BoxValue(v: number | Value<number>): Value<number>;
@@ -41,11 +48,20 @@ export function BoxValue<T>(
     return {
       type: "value",
       valueType: "static",
+      // confused by the need for this any cast.
       value: (v as any).map(BoxValue),
     };
   } else {
-    console.error("Got object", v);
-    throw new Error("No object boxing yet");
+    const mapped: any = {};
+    for (const [key, value] of Object.entries(v)) {
+      mapped[key] = BoxValue(value);
+    }
+
+    return {
+      type: "value",
+      valueType: "static",
+      value: mapped,
+    } as Value<string>;
   }
 }
 
@@ -101,5 +117,3 @@ export type Nodes =
   | CallExpressionNode
   | ResourceNode
   | Value<string | number>;
-
-type PrimitiveDataTypes = number | string | boolean;

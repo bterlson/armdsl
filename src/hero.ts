@@ -1,6 +1,11 @@
-import { concat } from "./string";
-import { defineLocationParameter, defineInputParameter } from "./parameters";
+import { concat } from "./platform/string";
+import {
+  defineLocationParameter,
+  defineInputParameter,
+} from "./platform/parameters";
 import { defineStorageAccount, defineAccountTypeParameter } from "./storage";
+
+/*
 import { defineVirtualMachine } from "./vm";
 
 const $location = defineLocationParameter("Location");
@@ -27,3 +32,4 @@ loop(1, $count, ($i) => {
     storageAccountId: $storage.id,
   });
 });
+*/
