@@ -1,12 +1,6 @@
 // https://github.com/Azure/azure-quickstart-templates/blob/master/101-aci-storage-file-share/azuredeploy.json
 
-import {
-  uniquestring,
-  defineInputParameter,
-  $resourceGroup,
-  defineArguments,
-  defineLocationParameter,
-} from "../src";
+import { uniquestring, defineInputParameter, $resourceGroup } from "../src";
 
 import {
   defineAccountTypeParameter,
@@ -15,52 +9,52 @@ import {
 
 import { defineContainerGroup } from "../src/containers";
 
-// arguments are passed via command line
-const args = defineArguments({
-  image: {
-    type: "string",
-    defaultValue: "microsoft/azure-cli",
-  },
-  cpuCores: {
-    type: "string",
-    defaultValue: "1.0",
-  },
-  memoryInGb: {
-    type: "string",
-    defaultValue: "1.5",
-  },
-});
+const args = {
+  image: "microsoft/azure-cli",
+  cpuCores: "1.0",
+  memoryInGb: "1.5",
+};
 
-// parameter values are provided at deployment time
-const $name = defineInputParameter("Storage Account Name", "string", {
+const $name = defineInputParameter({
+  name: "Storage Account Name",
+  type: "string",
   defaultValue: uniquestring($resourceGroup.id),
 });
-const $fsName = defineInputParameter("File Share Name", "string");
-const $storageType = defineAccountTypeParameter("Storage Account Type");
-const $location = defineInputParameter("location", "string", {
+
+const $fsName = defineInputParameter({
+  name: "File Share Name",
+  type: "string",
+});
+
+const $storageType = defineAccountTypeParameter({
+  name: "Storage Account Type",
+});
+
+const $location = defineInputParameter({
+  name: "location",
+  type: "string",
   defaultValue: $resourceGroup.location,
   metadata: {
     description: "The location of all resources",
   },
 });
 
-const $containerInstanceLocation = defineInputParameter(
-  "Container Instance Location",
-  "string",
-  {
-    defaultValue: $location,
-    allowedValues: [
-      "westus",
-      "eastus",
-      "westeurope",
-      "southeastaisa",
-      "westus2",
-    ],
-  }
-);
-const $storageAccount = defineStorageAccount($name, $location, $storageType);
+const $containerInstanceLocation = defineInputParameter({
+  name: "Container Instance Location",
+  type: "string",
+  defaultValue: $location,
+  allowedValues: ["westus", "eastus", "westeurope", "southeastaisa", "westus2"],
+});
 
-defineContainerGroup("createshare-containerinstance", $location, {
+const $storageAccount = defineStorageAccount({
+  name: $name,
+  location: $location,
+  sku: $storageType,
+});
+
+defineContainerGroup({
+  name: "createshare-containerinstance",
+  location: $containerInstanceLocation,
   dependsOn: [$storageAccount],
   properties: {
     restartPolicy: "OnFailure",

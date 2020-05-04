@@ -5,11 +5,10 @@ import {
   CallExpressionNode,
   BoxValue,
   MemberExpressionNode,
-  isValue,
+  Parameter,
 } from "../types";
 
 const API_VERSION = "2019-04-01";
-
 interface StorageKey {
   keyName: string;
   permission: string;
@@ -36,25 +35,45 @@ function listKeysCall(ref: Value<string>) {
   return memberExpr;
 }
 
+type StorageAccountType =
+  | "Storage"
+  | "StorageV2"
+  | "BlobStorage"
+  | "FileStorage"
+  | "BlockBlobStorage";
+
+type StorageAccountSku =
+  | "Standard_LRS"
+  | "Standard_GRS"
+  | "Standard_RAGRS"
+  | "Standard_ZRS"
+  | "Premium_LRS"
+  | "Premium_ZRS"
+  | "Standard_GZRS"
+  | "Standard_RAGZRS";
+
+interface DefineStorageAccountOptions {
+  name: Parameter<string>;
+  location: Parameter<string>;
+  sku: StorageAccountSku | Value<string>;
+}
 // todo : remove intersection
 export function defineStorageAccount(
-  name: string | Value<string>,
-  location: string | Value<string>,
-  type: string | Value<string>
+  options: DefineStorageAccountOptions
 ): Value<string> & Value<{ keys: StorageKeys }> {
-  const baseValue = defineResource(
-    name,
-    "Microsoft.Storage/storageAccounts",
-    API_VERSION,
-    {
-      location,
+  const baseValue = defineResource({
+    name: options.name,
+    type: "Microsoft.Storage/storageAccounts",
+    apiVersion: API_VERSION,
+    resource: {
+      location: options.location,
       sku: {
-        name: type,
+        name: options.sku,
       },
       kind: "StorageV2",
       properties: {},
-    }
-  );
+    },
+  });
 
   const callExpr = listKeysCall(baseValue);
 
@@ -118,13 +137,20 @@ export function defineStorageAccount(
   } as any;
 }
 
+interface AccountTypeParameterOptions {
+  name: string;
+}
 /**
  * Define an input parameter that prompts for a storage account type.
  *
  * @param name The name of this parameter
  */
-export function defineAccountTypeParameter(name: string) {
-  return defineInputParameter(name, "string", {
+export function defineAccountTypeParameter(
+  options: AccountTypeParameterOptions
+) {
+  return defineInputParameter({
+    name: options.name,
+    type: "string",
     defaultValue: "Standard_LRS",
     allowedValues: [
       "Standard_LRS",

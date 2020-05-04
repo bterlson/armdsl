@@ -14,11 +14,13 @@ import { defineResource } from "./platform/resources";
 // identifiers prefixed with $ are Values. Values represent variables in the ARM template.
 
 // common parameter types are provided
-const $location = defineLocationParameter("Location");
-const $type = defineAccountTypeParameter("storageAccountType");
+const $location = defineLocationParameter({ name: "Location" });
+const $type = defineAccountTypeParameter({ name: "storageAccountType" });
 
-// otherwise, call defineParameterType(name, type, {} as rest of usual ARM schema)
-const $manualLocation = defineInputParameter("Manual Location", "string", {
+// otherwise, call defineParameterType
+const $manualLocation = defineInputParameter({
+  name: "Manual Location",
+  type: "string",
   defaultValue: "Standard_LRS",
   allowedValues: [
     "Standard_LRS",
@@ -49,7 +51,10 @@ defineResource($name, {
 
 // or, use the convenient helper from the storage package
 //defineStorageAccount($name, $location, $type);
-defineOutputParameter("storageAccountName", $name);
+defineOutputParameter({
+  name: "storageAccountName",
+  value: $name,
+});
 
 console.log(emit());
 /*

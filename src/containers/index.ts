@@ -1,4 +1,4 @@
-import { Value } from "../types";
+import { Value, Parameter } from "../types";
 import { defineResource } from "../platform";
 
 interface Container {
@@ -17,33 +17,24 @@ interface Container {
 }
 
 interface ContainerOptions {
-  dependsOn: (string | Value<string>)[];
+  name: Parameter<string>;
+  location: Parameter<string>;
+  dependsOn?: Parameter<string>[];
   properties: {
-    restartPolicy: string | Value<string>;
-    osType: string | Value<string>;
-    containers: (Container | Value<Container>)[];
+    restartPolicy: Parameter<string>;
+    osType: Parameter<string>;
+    containers: Parameter<Container>[];
   };
 }
 
-/**
- * Define a container group
- *
- * @param name The name of the container group
- * @param location The location to deploy the container group to
- * @param options Additional options
- */
-export function defineContainerGroup(
-  name: string | Value<string>,
-  location: string | Value<string>,
-  options: ContainerOptions
-) {
-  return defineResource(
-    name,
-    "Microsoft.ContainerInstance/containerGroups",
-    "2018-10-01",
-    {
-      location,
-      ...options,
-    }
-  );
+export function defineContainerGroup(options: ContainerOptions) {
+  return defineResource({
+    name: options.name,
+    type: "Microsoft.ContainerInstance/containerGroups",
+    apiVersion: "2018-10-01",
+    resource: {
+      location: options.location,
+      propeties: options.properties,
+    },
+  });
 }

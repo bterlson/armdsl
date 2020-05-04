@@ -26,7 +26,7 @@ for (let i = 0; i < args.numShares; i++) {
   let $acct = defineStorageAccount(
     concat($acctPrefix, "storage-" + i),
     $resourceGroup.location,
-    "Standard_LBS"
+    ""
   );
 
   defineContainerGroup("container-" + i, $resourceGroup.location, {

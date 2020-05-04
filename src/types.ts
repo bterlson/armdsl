@@ -12,6 +12,7 @@ interface BaseValueType<T> {
 }
 
 export type Value<T> = BaseValueType<T> & KnownProps<T>;
+export type Parameter<T> = T | Value<T>;
 
 export function isValue(v: unknown): v is Value<any> {
   if (typeof v !== "object") return false;

@@ -7,7 +7,9 @@ import {
   MemberExpressionNode,
 } from "../types";
 
-type DefineInputParameterOptions = {
+type DefineInputParameterOptions<T> = {
+  name: string;
+  type: T;
   defaultValue?: Value<string> | Value<number> | string | number;
   allowedValues?: Value<(string | number)[]> | (string | number)[];
   metadata?: {
@@ -33,15 +35,13 @@ type ParameterTypes = "string" | "number" | "boolean" | "object" | "array";
  * @param options Additional options
  */
 export function defineInputParameter<T extends ParameterTypes>(
-  name: string,
-  type: T,
-  options: DefineInputParameterOptions = {}
+  options: DefineInputParameterOptions<T>
 ): Value<TypeMap[T]> {
   const parameter: InputParameterNode = {
     type: "inputParameter",
     parameter: {
-      name,
-      type: typeof type,
+      name: options.name,
+      type: options.type,
       allowedValues: options.allowedValues
         ? (BoxValue(options.allowedValues) as Value<(string | number)[]>)
         : undefined,
@@ -62,21 +62,22 @@ export function defineInputParameter<T extends ParameterTypes>(
     ref: parameter,
   };
 
-  const param = {
-    type,
-  };
-
   parameters.push(parameter);
 
   // TODO: fix me
   return value as any;
 }
 
-export function defineOutputParameter<T>(name: string, value: Value<T>) {
+interface OutputParameterOptions {
+  name: string;
+  value: Value<any>;
+}
+
+export function defineOutputParameter(options: OutputParameterOptions) {
   outputs.push({
     type: "output",
-    name,
-    value,
+    name: options.name,
+    value: options.value,
   });
 }
 
@@ -119,7 +120,13 @@ export const $resourceGroup: Value<ResourceGroup> = {
   },
 };
 
-const defaultLocationOptions: DefineInputParameterOptions = {
+type DefineLocationParameterOptions = Omit<
+  DefineInputParameterOptions<"string">,
+  "type"
+>;
+
+const defaultLocationOptions = {
+  type: "string" as const,
   defaultValue: $resourceGroup.id,
   metadata: {
     description: "Location for all resources.",
@@ -127,9 +134,8 @@ const defaultLocationOptions: DefineInputParameterOptions = {
 };
 
 export function defineLocationParameter(
-  name: string,
-  options?: DefineInputParameterOptions
+  options: DefineLocationParameterOptions
 ) {
   const opts = { ...defaultLocationOptions, ...options };
-  return defineInputParameter(name, "string", opts);
+  return defineInputParameter(opts);
 }
