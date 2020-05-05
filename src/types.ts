@@ -1,70 +1,91 @@
-type KnownProps<T> = T extends object
-  ? {
-      [k in keyof T]: Value<T[k]>;
-    }
-  : {};
+type ObjectValue<T extends object> = {
+  [k in keyof T]: Value<T[k]>;
+};
 
-interface BaseValueType<T> {
-  type: "value";
-  value?: T;
-  ref?: Nodes;
-  valueType: "future" | "static";
+type ArrayValue<T> = {
+  length: Value<number>;
+  [n: number]: Value<T>;
+};
+
+type AnyObjectValue = {
+  [s: string]: Value<any>;
+};
+
+type PrimitiveValue<T> = {
+  // this is never set, but needs to be present to
+  // prevent this type from being simplified away
+  " primitiveType"?: T;
+};
+
+type TypeToName<T> = T extends string
+  ? "string"
+  : T extends number
+  ? "number"
+  : T extends boolean
+  ? "boolean"
+  : T extends []
+  ? "array"
+  : T extends object
+  ? "object"
+  : never;
+
+type NameToType = {
+  string: string;
+  number: number;
+  boolean: boolean;
+  object: object;
+  array: [];
+};
+
+interface BaseValue<T> {
+  " value": Nodes;
+  " type": T;
 }
 
-export type Value<T> = BaseValueType<T> & KnownProps<T>;
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+export type Value<T> = BaseValue<T> &
+  (IsAny<T> extends true
+    ? AnyObjectValue
+    : T extends Array<infer U>
+    ? ArrayValue<U>
+    : T extends number | boolean | string
+    ? PrimitiveValue<T>
+    : T extends object
+    ? object extends T
+      ? AnyObjectValue
+      : ObjectValue<T>
+    : { fail: true });
+
 export type Parameter<T> = T | Value<T>;
 
-export function isValue(v: unknown): v is Value<any> {
-  if (typeof v !== "object") return false;
-  if (v === null) return false;
-  if ("type" in v) {
-    return (v as any).type === "value";
-  }
-  return false;
+export function valueOf(value: Nodes, type: "string"): Value<string>;
+export function valueOf(value: Nodes, type: "number"): Value<number>;
+export function valueOf(value: Nodes, type: "boolean"): Value<boolean>;
+export function valueOf(value: Nodes, type: "object"): Value<object>;
+export function valueOf<T extends object>(
+  value: Nodes,
+  type: "object",
+  knownProps: T
+): Value<T>;
+export function valueOf<T extends object>(
+  value: Nodes,
+  type: "string" | "number" | "boolean" | "object" | "array",
+  knownProps?: T
+):
+  | PrimitiveValue<string | number | boolean>
+  | ObjectValue<object>
+  | ObjectValue<T> {
+  return {
+    " type": type,
+    " value": value,
+  } as any;
 }
 
 export type PrimitiveTypes = string | number | boolean;
 export type ComplexTypes = object | any[];
 export type test = any[] extends {} ? true : false;
 export type AllTypes = ComplexTypes | PrimitiveTypes;
-
-export function BoxValue(v: string | Value<string>): Value<string>;
-export function BoxValue(v: number | Value<number>): Value<number>;
-export function BoxValue<T extends object>(v: T): Value<T>;
-export function BoxValue<T extends any[]>(v: T): Value<T>;
-export function BoxValue<T>(
-  v: string | number | string[] | number[] | object | Value<any>
-): Value<any> {
-  if (isValue(v)) return v;
-
-  if (typeof v === "string" || typeof v === "number") {
-    return {
-      type: "value",
-      value: v,
-      valueType: "static",
-    };
-  }
-
-  if (Array.isArray(v)) {
-    return {
-      type: "value",
-      valueType: "static",
-      // confused by the need for this any cast.
-      value: (v as any).map(BoxValue),
-    };
-  } else {
-    const mapped: any = {};
-    for (const [key, value] of Object.entries(v)) {
-      mapped[key] = BoxValue(value);
-    }
-
-    return {
-      type: "value",
-      valueType: "static",
-      value: mapped,
-    } as Value<string>;
-  }
-}
 
 export interface OutputNode {
   type: "output";
@@ -93,10 +114,10 @@ export interface InputParameterNode {
   parameter: {
     name: string;
     type: string;
-    defaultValue?: Value<string> | Value<number>;
-    allowedValues?: Value<(string | number)[]>;
+    defaultValue?: Parameter<string> | Parameter<number>;
+    allowedValues?: Parameter<(string | number)[]>;
     metadata?: {
-      description?: Value<string>;
+      description?: Parameter<string>;
     };
   };
 }
@@ -104,7 +125,7 @@ export interface InputParameterNode {
 export interface CallExpressionNode {
   type: "callExpression";
   target: string;
-  args: Value<any>[];
+  args: Parameter<any>[];
 }
 
 export interface ResourceNode {
