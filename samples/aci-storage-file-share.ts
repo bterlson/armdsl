@@ -1,19 +1,12 @@
 // https://github.com/Azure/azure-quickstart-templates/blob/master/101-aci-storage-file-share/azuredeploy.json
 
 import { uniquestring, defineInputParameter, $resourceGroup } from "../src";
-
-import {
-  defineAccountTypeParameter,
-  defineStorageAccount,
-} from "../src/storage";
-
+import { defineAccountTypeParameter, defineStorageAccount } from "../src/storage";
 import { defineContainerGroup } from "../src/containers";
 
-const args = {
-  image: "microsoft/azure-cli",
-  cpuCores: "1.0",
-  memoryInGb: "1.5",
-};
+const image = "microsoft/azure-cli";
+const cpuCores = "1.0";
+const memoryInGb = "1.5";
 
 const $name = defineInputParameter({
   name: "Storage Account Name",
@@ -55,7 +48,7 @@ const $storageAccount = defineStorageAccount({
 defineContainerGroup({
   name: "createshare-containerinstance",
   location: $containerInstanceLocation,
-  dependsOn: [$storageAccount],
+  dependsOn: [$storageAccount.name],
   properties: {
     restartPolicy: "OnFailure",
     osType: "linux",
@@ -63,7 +56,7 @@ defineContainerGroup({
       {
         name: "createshare",
         properties: {
-          image: "microsoft/azure-cli",
+          image: image,
           command: ["az", "storage", "share", "create", "--name", $fsName],
           environmentVariables: {
             AZURE_STORAGE_ACCOUNT: $name,
@@ -71,8 +64,8 @@ defineContainerGroup({
           },
           resources: {
             requests: {
-              cpu: args.cpuCores,
-              memoryInGb: args.memoryInGb,
+              cpu: cpuCores,
+              memoryInGb: memoryInGb,
             },
           },
         },

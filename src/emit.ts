@@ -1,5 +1,5 @@
 import { parameters, outputs, resources } from "./state";
-import { Value, Nodes, isValue, ResourceNode } from "./types";
+import { Value, Nodes, isValue } from "./types";
 
 export function emit() {
   const obj = {
@@ -15,87 +15,68 @@ export function emit() {
 }
 
 function emitResources() {
-  const res = [];
-  for (const resource of resources) {
-    res.push(emitResource(resource));
-  }
-  return res;
-}
-
-function emitResource(res: ResourceNode) {
-  const obj: any = {};
-  if (!res.rest) return obj;
-  return emitValue(res.rest);
+  return emitGraphNode(resources);
 }
 
 function emitParameters() {
-  const params: any = {};
-
-  for (const parameter of parameters) {
-    params[parameter.parameter.name] = {
-      type: parameter.parameter.type,
-      defaultValue: emitValue(parameter.parameter.defaultValue),
-      allowedValues: emitValue(parameter.parameter.allowedValues),
-      metadata: {
-        description: emitValue(parameter.parameter.metadata?.description),
-      },
-    };
-  }
-
-  return params;
+  return emitGraphNode(parameters);
 }
 
 function emitOutputs() {
-  const outs: any = {};
-
-  for (const output of outputs) {
-    outs[output.name] = emitValue(output.value);
-  }
-
-  return outs;
+  return emitGraphNode(outputs);
 }
 
-function emitReference(n: Nodes): string {
-  switch (n.type) {
-    case "value":
-      if (n.valueType === "static")
-        return JSON.stringify(n.value).replace(/^"|"$/g, "'");
-      return emitReference(n.ref!);
-    case "memberExpr":
-      if (typeof n.rhs === "number") {
-        return `${emitReference(n.lhs)}[${n.rhs}]`;
-      } else {
-        return `${emitReference(n.lhs)}.${n.rhs}`;
-      }
-    case "callExpression":
-      return `${n.target}(${n.args.map((v) => emitReference(v)).join(",")})`;
-    case "inputParameter":
-      return `parameters('${n.parameter.name}')`;
-    default:
-      throw new Error("Cannot emit reference to " + n.type);
+function emitReference(n: Nodes | string | number | boolean): string {
+  if (n != undefined && typeof n === "object") {
+    switch (n.type) {
+      case "memberExpr":
+        if (typeof n.rhs === "number" || n.rhs.match(/^\d+$/)) {
+          return `${emitReference(n.lhs)}[${n.rhs}]`;
+        } else {
+          return `${emitReference(n.lhs)}.${n.rhs}`;
+        }
+      case "callExpression":
+        return `${n.target}(${n.args.map((v) => emitValue(v)).join(",")})`;
+      case "identifier":
+        return n.name;
+    }
+  } else {
+    return JSON.stringify(n);
   }
 }
 
-function emitValue(
-  value: Value<any> | undefined
-): string | number | any[] | undefined {
-  if (value && value.type !== "value") throw new Error("Emitting non-value");
-  if (value === undefined) return undefined;
+export function emitValue(
+  value: Value<any> | string | number | boolean
+): string {
+  if (isValue(value)) {
+    return emitReference(value[" value"]);
+  } else if (typeof value === "string") {
+    return `'${value}'`;
+  } else {
+    return JSON.stringify(value);
+  }
+}
 
-  if (value.valueType === "static") {
-    if (typeof value.value === "string") return value.value;
-    if (typeof value.value === "number") return value.value;
+export function emitGraphNode(
+  value: Value<any> | string | number | boolean | object | any[]
+): string | object {
+  if (isValue(value)) {
+    return `[${emitReference(value[" value"])}]`;
+  } else if (typeof value === "object" && value !== null) {
+    let obj: any;
 
-    if (Array.isArray(value.value)) {
-      return value.value.map(emitValue);
+    if (Array.isArray(value)) {
+      obj = [];
+    } else {
+      obj = {};
     }
 
-    let obj: any = {};
-    for (let [key, v] of Object.entries(value.value)) {
-      obj[key] = emitValue(v as any);
+    for (let [key, v] of Object.entries(value)) {
+      obj[key] = emitGraphNode(v);
     }
+
     return obj;
+  } else {
+    return value;
   }
-
-  return `[${emitReference(value.ref!)}]`;
 }

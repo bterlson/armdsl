@@ -1,5 +1,9 @@
-import { InputParameterNode, OutputNode, ResourceNode } from "./types";
+import {
+  InputParameterDefinition,
+  OutputParameterDefinition,
+  ResourceDefinition,
+} from "./types";
 
-export const parameters: InputParameterNode[] = [];
-export const resources: ResourceNode[] = [];
-export const outputs: OutputNode[] = [];
+export const parameters: { [name: string]: InputParameterDefinition } = {};
+export const resources: ResourceDefinition[] = [];
+export const outputs: { [name: string]: OutputParameterDefinition } = {};

@@ -1,28 +1,22 @@
-import { Value, BoxValue } from "../types";
+import { Value, valueOf } from "../types";
 import { CallExpressionNode } from "../types";
 
 export function concat(...args: (string | Value<string>)[]): Value<string> {
-  return {
-    type: "value",
-    valueType: "future",
-    ref: {
-      type: "callExpression",
-      target: "concat",
-      args: args.map((v) => BoxValue(v)),
-    },
+  const callExpr: CallExpressionNode = {
+    type: "callExpression",
+    target: "concat",
+    args: args,
   };
+  return valueOf(callExpr, "string");
 }
 
 export function uniquestring(
   ...args: (string | Value<string>)[]
 ): Value<string> {
-  return {
-    type: "value",
-    valueType: "future",
-    ref: {
-      type: "callExpression",
-      target: "uniquestring",
-      args: args.map((v) => BoxValue(v)),
-    },
+  const callExpr: CallExpressionNode = {
+    type: "callExpression",
+    target: "uniquestring",
+    args: args,
   };
+  return valueOf(callExpr, "string");
 }

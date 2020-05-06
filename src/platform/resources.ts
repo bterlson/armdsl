@@ -1,4 +1,4 @@
-import { Value, BoxValue, CallExpressionNode, Parameter } from "../types";
+import { Value, CallExpressionNode, Parameter, valueOf } from "../types";
 import { resources } from "../state";
 
 type ResourceOptions = {
@@ -18,7 +18,7 @@ function getResourceIdCall(
   const resourceIdCall: CallExpressionNode = {
     type: "callExpression",
     target: "resourceId",
-    args: [BoxValue(type), BoxValue(name)],
+    args: [type, name],
   };
 
   return resourceIdCall;
@@ -31,21 +31,21 @@ interface DefineResourceOptions {
   resource: ResourceOptions;
 }
 
-export function defineResource(options: DefineResourceOptions): Value<string> {
+export interface Resource {
+  name: string;
+}
+export function defineResource(
+  options: DefineResourceOptions
+): Value<Resource> {
   const res = {
     name: options.name,
     type: options.type,
     apiVersion: options.apiVersion,
     ...options.resource,
   };
-  resources.push({
-    type: "resource",
-    rest: BoxValue(res),
-  });
+  resources.push(res);
 
-  return {
-    type: "value",
-    valueType: "future",
-    ref: getResourceIdCall(options.type, options.name),
-  };
+  return valueOf(getResourceIdCall(options.type, options.name), {
+    name: "string",
+  });
 }

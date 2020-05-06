@@ -1,9 +1,4 @@
-import {
-  defineArguments,
-  $resourceGroup,
-  defineInputParameter,
-  concat,
-} from "../src";
+import { defineArguments, $resourceGroup, defineInputParameter, concat } from "../src";
 import { defineStorageAccount } from "../src/storage";
 import { defineContainerGroup } from "../src/containers";
 
@@ -17,20 +12,22 @@ const args = defineArguments({
   },
 });
 
-const $acctPrefix = defineInputParameter(
-  "Storage Account Name Prefix",
-  "string"
-);
+const $acctPrefix = defineInputParameter({
+  name: "Storage Account Name Prefix",
+  type: "string",
+});
 
 for (let i = 0; i < args.numShares; i++) {
-  let $acct = defineStorageAccount(
-    concat($acctPrefix, "storage-" + i),
-    $resourceGroup.location,
-    ""
-  );
+  let $acct = defineStorageAccount({
+    name: concat($acctPrefix, "storage-" + i),
+    location: $resourceGroup.location,
+    sku: "Premium_LRS",
+  });
 
-  defineContainerGroup("container-" + i, $resourceGroup.location, {
-    dependsOn: [$acct],
+  defineContainerGroup({
+    name: "container-" + i,
+    location: $resourceGroup.location,
+    dependsOn: [$acct.name],
     properties: {
       osType: "Linux",
       restartPolicy: "OnError",

@@ -1,11 +1,12 @@
 import { defineInputParameter } from "../platform/parameters";
-import { defineResource } from "../platform";
+import { defineResource, Resource } from "../platform";
 import {
   Value,
   CallExpressionNode,
-  BoxValue,
   MemberExpressionNode,
   Parameter,
+  valueOf,
+  ObjectValueDescriptor,
 } from "../types";
 
 const API_VERSION = "2019-04-01";
@@ -15,15 +16,31 @@ interface StorageKey {
   value: string;
 }
 
+const StorageKeyDescriptor = {
+  keyName: "string",
+  permission: "string",
+  value: "string",
+} as const;
+
+interface StorageAccountResource {
+  keys: StorageKey[];
+  name: string;
+}
+
+const StorageAccountDescriptor = {
+  name: "string",
+  keys: [StorageKeyDescriptor],
+} as const;
+
 type StorageKeys = {
   [keyNum: number]: StorageKey;
 };
 
-function listKeysCall(ref: Value<string>) {
+function listKeysCall(ref: Value<Resource>) {
   const listKeysCall: CallExpressionNode = {
     type: "callExpression",
     target: "listKeys",
-    args: [ref, BoxValue(API_VERSION)],
+    args: [ref.name, API_VERSION],
   };
 
   const memberExpr: MemberExpressionNode = {
@@ -60,7 +77,7 @@ interface DefineStorageAccountOptions {
 // todo : remove intersection
 export function defineStorageAccount(
   options: DefineStorageAccountOptions
-): Value<string> & Value<{ keys: StorageKeys }> {
+): Value<StorageAccountResource> {
   const baseValue = defineResource({
     name: options.name,
     type: "Microsoft.Storage/storageAccounts",
@@ -76,65 +93,14 @@ export function defineStorageAccount(
   });
 
   const callExpr = listKeysCall(baseValue);
-
-  const keysValue: Value<StorageKeys> = {
-    type: "value",
-    valueType: "future",
-    ref: callExpr,
-  };
-
-  const arrayProxy = new Proxy(keysValue, {
-    get(target, prop, receiver) {
-      // todo: when is `prop` typeof number?
-      if (typeof prop === "string" && Number.isInteger(parseFloat(prop))) {
-        const indexMemberExpr = {
-          type: "memberExpr",
-          lhs: callExpr,
-          rhs: parseInt(prop),
-        };
-
-        return {
-          type: "value",
-          valueType: "future",
-          ref: indexMemberExpr,
-          keyName: {
-            type: "value",
-            valueType: "future",
-            ref: {
-              type: "memberExpr",
-              lhs: indexMemberExpr,
-              rhs: "keyName",
-            },
-          },
-          permission: {
-            type: "value",
-            valueType: "future",
-            ref: {
-              type: "memberExpr",
-              lhs: indexMemberExpr,
-              rhs: "permission",
-            },
-          },
-          value: {
-            type: "value",
-            valueType: "future",
-            ref: {
-              type: "memberExpr",
-              lhs: indexMemberExpr,
-              rhs: "value",
-            },
-          },
-        };
-      } else {
-        return Reflect.get(target, prop, receiver);
-      }
-    },
-  });
+  const keysValue: Value<StorageKeys[]> = valueOf(callExpr, [
+    StorageKeyDescriptor,
+  ]);
 
   return {
     ...baseValue,
-    keys: arrayProxy,
-  } as any;
+    keys: keysValue,
+  } as any; // ?
 }
 
 interface AccountTypeParameterOptions {

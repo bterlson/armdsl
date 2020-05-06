@@ -1,16 +1,23 @@
 import { parameters, outputs } from "../state";
 import {
   Value,
-  InputParameterNode,
-  BoxValue,
   CallExpressionNode,
   MemberExpressionNode,
+  valueOf,
+  Parameter,
+  InputParameterDefinition,
+  isValue,
 } from "../types";
 
 type DefineInputParameterOptions<T> = {
   name: string;
   type: T;
-  defaultValue?: Value<string> | Value<number> | string | number;
+  defaultValue?:
+    | Parameter<string>
+    | Parameter<number>
+    | Parameter<boolean>
+    | Parameter<object>
+    | Parameter<any[]>;
   allowedValues?: Value<(string | number)[]> | (string | number)[];
   metadata?: {
     description: Value<string> | string;
@@ -37,34 +44,24 @@ type ParameterTypes = "string" | "number" | "boolean" | "object" | "array";
 export function defineInputParameter<T extends ParameterTypes>(
   options: DefineInputParameterOptions<T>
 ): Value<TypeMap[T]> {
-  const parameter: InputParameterNode = {
-    type: "inputParameter",
-    parameter: {
-      name: options.name,
-      type: options.type,
-      allowedValues: options.allowedValues
-        ? (BoxValue(options.allowedValues) as Value<(string | number)[]>)
-        : undefined,
-      metadata: {
-        description: options.metadata?.description
-          ? BoxValue(options.metadata?.description)
-          : undefined,
-      },
-      defaultValue: options.defaultValue
-        ? BoxValue(options.defaultValue as any)
-        : undefined,
-    },
+  const parameter: InputParameterDefinition = {
+    type: options.type,
+    allowedValues: options.allowedValues,
+    metadata: options.metadata,
+    defaultValue: options.defaultValue,
   };
 
   const value: Value<any> = {
-    valueType: "future",
-    type: "value",
-    ref: parameter,
+    " type": options.type,
+    " value": {
+      type: "callExpression",
+      args: [options.name],
+      target: "parameter",
+    },
   };
 
-  parameters.push(parameter);
+  parameters[options.name] = parameter;
 
-  // TODO: fix me
   return value as any;
 }
 
@@ -74,11 +71,12 @@ interface OutputParameterOptions {
 }
 
 export function defineOutputParameter(options: OutputParameterOptions) {
-  outputs.push({
-    type: "output",
-    name: options.name,
+  outputs[options.name] = {
+    type: isValue(options.value)
+      ? options.value[" type"]
+      : typeof options.value,
     value: options.value,
-  });
+  };
 }
 
 interface ResourceGroup {
@@ -92,33 +90,10 @@ const resourceGroupCall: CallExpressionNode = {
   args: [],
 };
 
-const resourceGroupId: MemberExpressionNode = {
-  type: "memberExpr",
-  lhs: resourceGroupCall,
-  rhs: "id",
-};
-
-const resourceGroupLocation: MemberExpressionNode = {
-  type: "memberExpr",
-  lhs: resourceGroupCall,
-  rhs: "location",
-};
-
-export const $resourceGroup: Value<ResourceGroup> = {
-  type: "value",
-  ref: resourceGroupCall,
-  valueType: "future",
-  id: {
-    type: "value",
-    valueType: "future",
-    ref: resourceGroupId,
-  },
-  location: {
-    type: "value",
-    valueType: "future",
-    ref: resourceGroupLocation,
-  },
-};
+export const $resourceGroup: Value<ResourceGroup> = valueOf(resourceGroupCall, {
+  id: "string",
+  location: "string",
+});
 
 type DefineLocationParameterOptions = Omit<
   DefineInputParameterOptions<"string">,
