@@ -7,7 +7,6 @@ const $accountNames = defineInputParameter({
   defaultValue: [],
 });
 
-console.log($accountNames);
 defineStorageAccount({
   name: "acct1",
   sku: "Premium_LRS",

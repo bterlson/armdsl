@@ -1,4 +1,4 @@
-import { parameters, outputs } from "../state";
+import { parameters, outputs, context } from "../state";
 import {
   Value,
   CallExpressionNode,
@@ -8,6 +8,7 @@ import {
   InputParameterDefinition,
   isValue,
 } from "../types";
+import { and } from ".";
 
 type DefineInputParameterOptions<T> = {
   name: string;
@@ -34,6 +35,16 @@ interface TypeMap {
 
 type ParameterTypes = "string" | "number" | "boolean" | "object" | "array";
 
+interface OutputDefinition {
+  type: ParameterTypes;
+  condition?: Value<boolean>;
+  value?: Value<any>;
+  copy?: {
+    count: Value<number>;
+    input: Value<any>;
+  };
+}
+
 /**
  * Define a template parameter
  *
@@ -51,14 +62,13 @@ export function defineInputParameter<T extends ParameterTypes>(
     defaultValue: options.defaultValue,
   };
 
-  const value: Value<any> = {
-    " type": options.type,
-    " value": {
-      type: "callExpression",
-      args: [options.name],
-      target: "parameter",
-    },
+  const callExpr: CallExpressionNode = {
+    type: "callExpression",
+    args: [options.name],
+    target: "parameter",
   };
+
+  const value: Value<any> = valueOf(callExpr, options.type);
 
   parameters[options.name] = parameter;
 
@@ -71,12 +81,10 @@ interface OutputParameterOptions {
 }
 
 export function defineOutputParameter(options: OutputParameterOptions) {
-  outputs[options.name] = {
-    type: isValue(options.value)
-      ? options.value[" type"]
-      : typeof options.value,
+  outputs[options.name] = applyContext({
+    type: isValue(options.value) ? options.value[" type"] : typeof options.value,
     value: options.value,
-  };
+  }) as any;
 }
 
 interface ResourceGroup {
@@ -95,10 +103,7 @@ export const $resourceGroup: Value<ResourceGroup> = valueOf(resourceGroupCall, {
   location: "string",
 });
 
-type DefineLocationParameterOptions = Omit<
-  DefineInputParameterOptions<"string">,
-  "type"
->;
+type DefineLocationParameterOptions = Omit<DefineInputParameterOptions<"string">, "type">;
 
 const defaultLocationOptions = {
   type: "string" as const,
@@ -108,9 +113,41 @@ const defaultLocationOptions = {
   },
 };
 
-export function defineLocationParameter(
-  options: DefineLocationParameterOptions
-) {
+export function defineLocationParameter(options: DefineLocationParameterOptions) {
   const opts = { ...defaultLocationOptions, ...options };
   return defineInputParameter(opts);
+}
+
+function applyContext(res: OutputDefinition) {
+  const conditions = [];
+  let copyDef;
+
+  if (res.condition) conditions.push(res.condition);
+
+  for (let c of context) {
+    if (c.condition) {
+      conditions.push(c.condition);
+    }
+
+    if (c.copy) {
+      copyDef = {
+        count: c.copy.count,
+        input: res.value,
+      };
+    }
+  }
+
+  if (conditions.length === 1) {
+    res.condition = conditions[0];
+  } else if (conditions.length > 1) {
+    res.condition = (and as any)(...conditions);
+  }
+
+  if (copyDef) {
+    delete res.value;
+    res.copy = copyDef;
+    res.type = "array";
+  }
+
+  return res;
 }

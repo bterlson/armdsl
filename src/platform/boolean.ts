@@ -67,3 +67,25 @@ export function lessOrEquals(
 ) {
   return callValue("lessOrEquals", "boolean", arg1, arg2);
 }
+
+/**
+ * Returns True when parameter is False. Returns False when parameter is True.
+ * @param arg1 The value to convert.
+ */
+export function not(arg1: Parameter<boolean>) {
+  return callValue("not", "boolean", arg1);
+}
+
+/**
+ * Checks whether all parameter values are true.
+ * @param arg1 The first value to check whether is true.
+ * @param arg2 The second value to check whether is true.
+ * @param args Additional arguments to check whether are true.
+ */
+export function and(
+  arg1: Parameter<boolean>,
+  arg2: Parameter<boolean>,
+  ...args: Parameter<boolean>[]
+) {
+  return callValue("and", "boolean", arg1, arg2, ...args);
+}

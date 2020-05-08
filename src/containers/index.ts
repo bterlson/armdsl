@@ -19,7 +19,7 @@ interface Container {
 interface ContainerOptions {
   name: Parameter<string>;
   location: Parameter<string>;
-  dependsOn?: Parameter<string>[];
+  dependsOn?: Value<string[]> | (Value<string> | string)[];
   properties: {
     restartPolicy: Parameter<string>;
     osType: Parameter<string>;
@@ -32,9 +32,10 @@ export function defineContainerGroup(options: ContainerOptions) {
     name: options.name,
     type: "Microsoft.ContainerInstance/containerGroups",
     apiVersion: "2018-10-01",
+    dependsOn: options.dependsOn,
+    location: options.location,
     resource: {
-      location: options.location,
-      propeties: options.properties,
+      properties: options.properties,
     },
   });
 }

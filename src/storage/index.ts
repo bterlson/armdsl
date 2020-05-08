@@ -1,5 +1,5 @@
 import { defineInputParameter } from "../platform/parameters";
-import { defineResource, Resource } from "../platform";
+import { defineResource, Resource, DefineResourceOptions } from "../platform";
 import {
   Value,
   CallExpressionNode,
@@ -7,6 +7,8 @@ import {
   Parameter,
   valueOf,
   ObjectValueDescriptor,
+  callValue,
+  memberValue,
 } from "../types";
 
 const API_VERSION = "2019-04-01";
@@ -22,14 +24,23 @@ const StorageKeyDescriptor = {
   value: "string",
 } as const;
 
+interface StoragePrimaryEndpoints {
+  blob: string;
+}
 interface StorageAccountResource {
   keys: StorageKey[];
   name: string;
+  primaryEndpoints: StoragePrimaryEndpoints;
 }
+
+const PrimaryEndpointsDescriptor = {
+  blob: "string",
+} as const;
 
 const StorageAccountDescriptor = {
   name: "string",
   keys: [StorageKeyDescriptor],
+  primaryEndpoints: PrimaryEndpointsDescriptor,
 } as const;
 
 type StorageKeys = {
@@ -69,9 +80,8 @@ type StorageAccountSku =
   | "Standard_GZRS"
   | "Standard_RAGZRS";
 
-interface DefineStorageAccountOptions {
-  name: Parameter<string>;
-  location: Parameter<string>;
+interface DefineStorageAccountOptions extends Omit<DefineResourceOptions, "apiVersion" | "type"> {
+  apiVersion?: string;
   sku: StorageAccountSku | Value<string>;
 }
 // todo : remove intersection
@@ -81,9 +91,11 @@ export function defineStorageAccount(
   const baseValue = defineResource({
     name: options.name,
     type: "Microsoft.Storage/storageAccounts",
-    apiVersion: API_VERSION,
+    apiVersion: options.apiVersion ?? API_VERSION,
+    location: options.location,
+    condition: options.condition,
+    dependsOn: options.dependsOn,
     resource: {
-      location: options.location,
       sku: {
         name: options.sku,
       },
@@ -93,13 +105,19 @@ export function defineStorageAccount(
   });
 
   const callExpr = listKeysCall(baseValue);
-  const keysValue: Value<StorageKeys[]> = valueOf(callExpr, [
-    StorageKeyDescriptor,
-  ]);
+  const keysValue: Value<StorageKeys[]> = valueOf(callExpr, [StorageKeyDescriptor]);
+
+  const primaryEndpointsValue = memberValue(
+    baseValue,
+    PrimaryEndpointsDescriptor,
+    "properties",
+    "primaryEndpoints"
+  );
 
   return {
     ...baseValue,
     keys: keysValue,
+    primaryEndpoints: primaryEndpointsValue,
   } as any; // ?
 }
 
@@ -111,19 +129,12 @@ interface AccountTypeParameterOptions {
  *
  * @param name The name of this parameter
  */
-export function defineAccountTypeParameter(
-  options: AccountTypeParameterOptions
-) {
+export function defineAccountTypeParameter(options: AccountTypeParameterOptions) {
   return defineInputParameter({
     name: options.name,
     type: "string",
     defaultValue: "Standard_LRS",
-    allowedValues: [
-      "Standard_LRS",
-      "Standard_GRS",
-      "Standard_ZRS",
-      "Premium_LRS",
-    ],
+    allowedValues: ["Standard_LRS", "Standard_GRS", "Standard_ZRS", "Premium_LRS"],
     metadata: {
       description: "Storage Account type",
     },

@@ -1,14 +1,12 @@
-import { notDeepStrictEqual } from "assert";
+import { test } from "mocha";
 
 export type Value<T> = 0 extends 1 & T
   ? any
-  :
-      | MakePrimitiveValue<Exclude<T, object>>
-      | MakeStructuredValue<Extract<T, object>>;
+  : MakePrimitiveValue<Exclude<T, object>> | MakeStructuredValue<Extract<T, object>>;
 
 type MakePrimitiveValue<T> = [T] extends [never] ? never : PrimitiveValue<T>;
 
-type MakeStructuredValue<T> = object extends T
+type MakeStructuredValue<T extends object> = object extends Required<T>
   ? Record<string, any>
   : T extends any[]
   ? ArrayValue<T[number]>
@@ -26,13 +24,27 @@ type ArrayValue<T> = BaseValue & {
   };
 
 type ObjectValue<T> = BaseValue & { " type": "object" } & {
-    readonly [K in keyof T]: Value<T[K]>;
+    readonly [K in keyof T]-?: Value<Exclude<T[K], undefined>>;
   };
 
-export type Parameter<T> = T | Value<T>;
+export type Parameter<T> =
+  | MakePrimitiveParameter<Exclude<T, object>>
+  | MakeStructuredParameter<Extract<T, object>>;
 
-type FlattenValues<T extends object> = {
-  [k in keyof T]: T[k] extends Value<infer U> ? U : T[k];
+type MakePrimitiveParameter<T> = [T] extends [never] ? never : Value<T> | T;
+
+type MakeStructuredParameter<T> = object extends Required<T>
+  ? Record<string, any>
+  : T extends any[]
+  ? ArrayParameter<T[number]>
+  : ObjectParameter<T>;
+
+type ArrayParameter<T> = {
+  [K in number]: Parameter<T>;
+};
+
+type ObjectParameter<T> = {
+  [K in keyof T]: Parameter<T[K]>;
 };
 
 type TypeToName<T> = T extends string
@@ -64,16 +76,13 @@ export type ObjectValueDescriptor = {
 
 export type ArrayValueDescriptor = [ValueDescriptor];
 
-export type ValueDescriptor =
-  | keyof NameToType
-  | ObjectValueDescriptor
-  | ArrayValueDescriptor;
+export type ValueDescriptor = keyof NameToType | ObjectValueDescriptor | ArrayValueDescriptor;
 
 type TypeFromObjectDescriptor<T extends {}> = {
   [k in keyof T]: TypeFromDescriptor<T[k]>;
 };
 
-type TypeFromDescriptor<T> = T extends [any]
+export type TypeFromDescriptor<T> = T extends [any]
   ? Array<TypeFromDescriptor<T[0]>>
   : T extends object
   ? TypeFromObjectDescriptor<T>
@@ -95,13 +104,11 @@ export function valueOf<T extends ArrayValueDescriptor>(
   type: T
 ): Value<TypeFromDescriptor<T>>;
 export function valueOf(value: Nodes, type: "any"): Value<any>;
+export function valueOf<T>(value: Nodes, type: T): Value<TypeFromDescriptor<T>>;
 export function valueOf(
   value: Nodes,
   type: ValueDescriptor
-):
-  | PrimitiveValue<string | number | boolean>
-  | ObjectValue<any>
-  | ArrayValue<any> {
+): PrimitiveValue<string | number | boolean> | ObjectValue<any> | ArrayValue<any> {
   if (type === "object" || type === "any") {
     // AnyObject
     return createAnyObjectProxy(value);
@@ -168,10 +175,7 @@ function createArrayProxy(
   return new Proxy(
     {
       " value": base,
-      length: valueOf(
-        { type: "memberExpr", lhs: base, rhs: "length" },
-        "number"
-      ),
+      length: valueOf({ type: "memberExpr", lhs: base, rhs: "length" }, "number"),
     },
     {
       get(target, prop, receiver) {
@@ -208,6 +212,28 @@ export interface MemberExpressionNode {
   rhs: string;
 }
 
+export function memberValue(
+  base: Value<object>,
+  type: ValueDescriptor,
+  arg1: string,
+  ...args: string[]
+): MemberExpressionNode {
+  let current = {
+    type: "memberExpr",
+    lhs: base[" value"],
+    rhs: arg1,
+  } as const;
+
+  for (let arg of args) {
+    current = {
+      type: "memberExpr",
+      lhs: current,
+      rhs: arg,
+    };
+  }
+
+  return valueOf(current, type);
+}
 export interface IdentifierNode {
   type: "identifier";
   name: string;
@@ -217,6 +243,20 @@ export interface CallExpressionNode {
   type: "callExpression";
   target: string;
   args: Parameter<any>[];
+}
+
+export function callValue<T extends ValueDescriptor>(
+  fn: string,
+  type: T,
+  ...args: Value<any>[]
+): Value<TypeFromDescriptor<T>> {
+  const expr: CallExpressionNode = {
+    type: "callExpression",
+    target: fn,
+    args: args,
+  };
+
+  return valueOf(expr, type);
 }
 
 export type Nodes = MemberExpressionNode | CallExpressionNode | IdentifierNode;
@@ -235,10 +275,18 @@ export interface InputParameterDefinition {
   };
 }
 
+interface CopyDefinition {
+  name: string;
+  count: Value<number>;
+}
 export interface ResourceDefinition {
   name: Parameter<string>;
   type: Parameter<string>;
+  location: Parameter<string>;
   apiVersion: string;
+  condition?: Parameter<boolean>;
+  copy?: CopyDefinition;
+  dependsOn?: Value<string[]> | (Value<string> | string)[];
   properties?: {
     [s: string]: any;
   };

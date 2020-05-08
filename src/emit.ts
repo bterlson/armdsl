@@ -3,8 +3,7 @@ import { Value, Nodes, isValue } from "./types";
 
 export function emit() {
   const obj = {
-    $schema:
-      "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    $schema: "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     contentVersion: "1.0.0.0",
     parameters: emitParameters(),
     resources: emitResources(),
@@ -45,9 +44,7 @@ function emitReference(n: Nodes | string | number | boolean): string {
   }
 }
 
-export function emitValue(
-  value: Value<any> | string | number | boolean
-): string {
+export function emitValue(value: Value<any> | string | number | boolean): string {
   if (isValue(value)) {
     return emitReference(value[" value"]);
   } else if (typeof value === "string") {
