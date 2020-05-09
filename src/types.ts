@@ -2,7 +2,7 @@ import { test } from "mocha";
 
 export type Value<T> = 0 extends 1 & T
   ? any
-  : MakePrimitiveValue<Exclude<T, object>> | MakeStructuredValue<Extract<T, object>>;
+  : MakePrimitiveValue<Exclude<T, object | undefined>> | MakeStructuredValue<Extract<T, object>>;
 
 type MakePrimitiveValue<T> = [T] extends [never] ? never : PrimitiveValue<T>;
 
@@ -24,12 +24,13 @@ type ArrayValue<T> = BaseValue & {
   };
 
 type ObjectValue<T> = BaseValue & { " type": "object" } & {
-    readonly [K in keyof T]-?: Value<Exclude<T[K], undefined>>;
+    readonly [K in keyof T]-?: Value<T[K]>;
   };
 
 export type Parameter<T> =
-  | MakePrimitiveParameter<Exclude<T, object>>
-  | MakeStructuredParameter<Extract<T, object>>;
+  | MakePrimitiveParameter<Exclude<T, object | undefined>>
+  | MakeStructuredParameter<Extract<T, object>>
+  | Extract<T, undefined>;
 
 type MakePrimitiveParameter<T> = [T] extends [never] ? never : Value<T> | T;
 
